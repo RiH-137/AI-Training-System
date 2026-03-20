@@ -5,7 +5,7 @@ import axios from 'axios'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
 
-export default function UploadForm({ setResult }) {
+export default function UploadForm({ setResult, sessionId }) {
   const [mode, setMode] = useState('upload')
   const [file, setFile] = useState(null)
   const [text, setText] = useState('')
@@ -14,6 +14,11 @@ export default function UploadForm({ setResult }) {
 
   const handleSubmit = async () => {
     setError('')
+
+    if (!/^[A-Za-z0-9]{8}$/.test(sessionId || '')) {
+      setError('Session ID is initializing. Please try again in a moment.')
+      return
+    }
 
     if (mode === 'upload' && !file) {
       setError('Please upload a PDF file.')
@@ -32,6 +37,7 @@ export default function UploadForm({ setResult }) {
     if (mode === 'paste' && text.trim()) {
       formData.append('text', text.trim())
     }
+    formData.append('session_id', sessionId)
 
     try {
       setLoading(true)
