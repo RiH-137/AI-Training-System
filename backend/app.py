@@ -15,13 +15,43 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Use middleware-driven CORS to ensure preflight and error responses get headers in production.
+
+def _parse_allowed_origins() -> list[str]:
+    raw = (os.getenv("ALLOWED_ORIGINS") or "").strip()
+    if not raw:
+        return [
+            "http://localhost:3000",
+            "https://ai-training-system-dusky.vercel.app/",
+        ]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+ALLOWED_ORIGINS = _parse_allowed_origins()
+
+# Use explicit origins so deployed frontend domains are handled predictably.
 CORS(
     app,
-    resources={r"/*": {"origins": "*"}},
+    resources={r"/*": {"origins": ALLOWED_ORIGINS}},
     methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get("Origin")
+    if origin and origin in ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True}), 204
 
 
 SESSION_ID_REGEX = re.compile(r"^[A-Za-z0-9]{8}$")
