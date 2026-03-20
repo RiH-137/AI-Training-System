@@ -3,8 +3,6 @@
 import { useMemo, useState } from 'react'
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-
 export default function OutputDisplay({ result, bulkResults, sessionId, difficulty }) {
   const hasBulkResults = Array.isArray(bulkResults) && bulkResults.length > 0
   const hasSingleResult = Boolean(result)
@@ -45,7 +43,7 @@ export default function OutputDisplay({ result, bulkResults, sessionId, difficul
 
     try {
       setQuizLoading(true)
-      const res = await axios.post(`${API_BASE_URL}/evaluate-quiz`, {
+      const res = await axios.post('/api/backend/evaluate-quiz', {
         session_id: sessionId,
         difficulty,
         quiz_questions: questions,

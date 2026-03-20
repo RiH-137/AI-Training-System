@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-
 const QUESTION_POOL = [
   'What is the most important objective of this SOP?',
   'Can you summarize the SOP in 5 key points?',
@@ -70,7 +68,7 @@ export default function SopChat({
 
     try {
       setLoading(true)
-      const res = await axios.post(`${API_BASE_URL}/ask`, {
+      const res = await axios.post('/api/backend/ask', {
         session_id: sessionId,
         question: q,
       })

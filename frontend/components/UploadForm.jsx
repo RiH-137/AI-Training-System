@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
 const API_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 120000)
 const PROCESS_STAGES = ['Extracting text...', 'Analyzing SOP...', 'Generating training...', 'Generating quiz...']
 
@@ -106,7 +105,7 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
     try {
       setLoading(true)
       startStageInterval()
-      const res = await axios.post(`${API_BASE_URL}/process`, formData, { timeout: API_TIMEOUT_MS })
+      const res = await axios.post('/api/backend/process', formData, { timeout: API_TIMEOUT_MS })
       setResult(res.data.result)
       setBulkResults([])
       if (typeof onUnlockChat === 'function') {
@@ -172,7 +171,7 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
     try {
       setLoading(true)
       startStageInterval()
-      const res = await axios.post(`${API_BASE_URL}/process-bulk`, formData, { timeout: API_TIMEOUT_MS })
+      const res = await axios.post('/api/backend/process-bulk', formData, { timeout: API_TIMEOUT_MS })
       const items = Array.isArray(res.data?.items) ? res.data.items : []
       setBulkResults(items)
       setResult(null)

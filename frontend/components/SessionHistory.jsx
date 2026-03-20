@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import axios from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
-
 export default function SessionHistory({ activeChatSessionId, onSelectSessionForChat }) {
   const [lookupSessionId, setLookupSessionId] = useState('')
   const [loadedSessionId, setLoadedSessionId] = useState('')
@@ -25,7 +23,7 @@ export default function SessionHistory({ activeChatSessionId, onSelectSessionFor
 
     try {
       setLoading(true)
-      const res = await axios.get(`${API_BASE_URL}/history/${sessionId}`)
+      const res = await axios.get(`/api/backend/history/${sessionId}`)
       const nextHistory = Array.isArray(res.data?.history) ? res.data.history : []
       setHistory(nextHistory)
       setLoadedSessionId(sessionId)
