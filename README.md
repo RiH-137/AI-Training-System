@@ -14,6 +14,45 @@ Architecture:
 
 The app supports automated SOP processing, quiz generation and evaluation, SOP insights, session history, and SOP chat.
 
+## Tools and Technologies Used (Assessment)
+
+### AI and LLM
+- Groq API
+- Llama model via Groq (`llama-3.1-8b-instant`, configurable with `GROQ_MODEL`)
+- Prompt-driven JSON generation for summary, training steps, quiz, and insights
+
+### Frontend
+- Next.js 14 (App Router)
+- React 18
+- JavaScript (no TypeScript)
+- Tailwind CSS
+- Axios
+- Nodemailer (email sending through Next.js server route on Vercel)
+
+### Backend
+- Python 3
+- Flask
+- Requests
+- PyPDF2 (PDF text extraction)
+- Python-dotenv
+- Gunicorn (production app server)
+
+### Database
+- MongoDB Atlas
+- PyMongo
+
+### Deployment and Hosting
+- Vercel (Frontend)
+- Render (Backend)
+
+### Developer and Testing Tools
+- npm
+- pip
+- ESLint (Next.js lint workflow)
+- Postman (API testing)
+- Git and GitHub (version control)
+- GitHub Copilot (GPT-5.3-Codex) for assisted development
+
 ## Updated Features
 - Auto SOP processing on upload or text paste pause (no manual process button)
 - Difficulty-based generation: Beginner, Intermediate, Advanced
