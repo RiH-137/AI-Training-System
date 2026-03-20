@@ -4,7 +4,8 @@ import os
 import re
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, make_response, request
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 from utils.llm import answer_question_from_sop, evaluate_quiz_answers, generate_output
 from utils.parser import extract_text_from_pdf
@@ -14,31 +15,13 @@ load_dotenv()
 
 app = Flask(__name__)
 
-
-def _allowed_origins() -> list[str]:
-    origins = os.getenv("ALLOWED_ORIGINS", "").strip()
-    if origins:
-        return [origin.strip() for origin in origins.split(",") if origin.strip()]
-
-    return [
-        os.getenv("ALLOWED_ORIGIN", "http://localhost:3000").strip(),
-        "https://ai-training-system-dusky.vercel.app",
-    ]
-
-
-def _origin_allowed(origin: str | None, allowed_origins: list[str]) -> bool:
-    if not origin:
-        return False
-
-    normalized = origin.rstrip("/")
-    allowed_set = {item.rstrip("/") for item in allowed_origins}
-    if normalized in allowed_set:
-        return True
-
-    return normalized.endswith(".vercel.app")
-
-
-ALLOWED_ORIGINS = _allowed_origins()
+# Use middleware-driven CORS to ensure preflight and error responses get headers in production.
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 
 SESSION_ID_REGEX = re.compile(r"^[A-Za-z0-9]{8}$")
@@ -63,13 +46,6 @@ def _validate_difficulty(raw_difficulty: str | None) -> str:
 @app.get("/health")
 def health_check():
     return jsonify({"status": "ok"})
-
-
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        return make_response("", 204)
-    return None
 
 
 @app.post("/process")
@@ -254,17 +230,6 @@ def evaluate_quiz():
         return jsonify({"ok": True, "evaluation": evaluation})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
-
-
-@app.after_request
-def apply_dynamic_cors(response):
-    origin = request.headers.get("Origin")
-    if _origin_allowed(origin, ALLOWED_ORIGINS):
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        response.headers["Vary"] = "Origin"
-    return response
 
 
 if __name__ == "__main__":

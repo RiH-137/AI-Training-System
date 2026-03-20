@@ -16,11 +16,12 @@ The app supports automated SOP processing, quiz generation and evaluation, SOP i
 
 ## Tools and Technologies Used (Assessment)
 
-### AI and LLM
+### AI tools and LLM
 - Groq API
 - Llama model via Groq (`llama-3.1-8b-instant`, configurable with `GROQ_MODEL`)
 - Prompt-driven JSON generation for summary, training steps, quiz, and insights
-
+- Copilot
+- ChatGPT
 ### Frontend
 - Next.js 14 (App Router)
 - React 18
@@ -52,6 +53,7 @@ The app supports automated SOP processing, quiz generation and evaluation, SOP i
 - Postman (API testing)
 - Git and GitHub (version control)
 - GitHub Copilot (GPT-5.3-Codex) for assisted development
+
 
 ## Updated Features
 - Auto SOP processing on upload or text paste pause (no manual process button)
