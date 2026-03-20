@@ -95,25 +95,13 @@ MongoDB persistence is implemented as optional history logging, which means the 
 - NEXT_PUBLIC_API_BASE_URL (backend URL)
 4. Run frontend app.
 
-### 4) Deployment Setup
 
-Render backend:
-- Root Directory: backend
-- Build Command: pip install -r requirements.txt
-- Start Command: gunicorn app:app
-- Set required environment variables in Render dashboard.
-
-Vercel frontend:
-- Root Directory: frontend
-- Framework: Next.js
-- Set NEXT_PUBLIC_API_BASE_URL to Render backend URL.
-
-### 5) API Endpoints
+### 4) API Endpoints
 - GET /health : Health check
 - POST /process : Process SOP and save session run
 - GET /history/<session_id> : Fetch session history
 - POST /ask : Ask follow-up question using latest SOP in session
 
-### 6) Validation Commands
+### 5) Validation Commands
 - Backend syntax check: python -m compileall .
 - Frontend lint: npm run lint
