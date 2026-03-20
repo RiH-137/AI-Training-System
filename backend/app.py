@@ -13,7 +13,18 @@ from utils.storage import save_training_run
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": [os.getenv("ALLOWED_ORIGIN", "http://localhost:3000")]}})
+
+
+def _allowed_origins() -> list[str]:
+    origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if origins:
+        return [origin.strip() for origin in origins.split(",") if origin.strip()]
+
+    single_origin = os.getenv("ALLOWED_ORIGIN", "http://localhost:3000").strip()
+    return [single_origin]
+
+
+CORS(app, resources={r"/*": {"origins": _allowed_origins()}})
 
 
 @app.get("/health")
