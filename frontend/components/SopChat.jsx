@@ -51,7 +51,8 @@ export default function SopChat({
       return
     }
 
-    const q = (incomingQuestion ?? question).trim()
+    const questionCandidate = typeof incomingQuestion === 'string' ? incomingQuestion : question
+    const q = questionCandidate.trim()
 
     if (!/^[A-Za-z0-9]{8}$/.test(sessionId || '')) {
       setError('Session ID is initializing. Please try again in a moment.')
@@ -193,7 +194,7 @@ export default function SopChat({
           />
           <button
             type="button"
-            onClick={askQuestion}
+            onClick={() => askQuestion()}
             disabled={loading || isLocked}
             className="w-fit rounded-lg border border-line bg-[#22252b] px-5 py-2 text-sm font-medium text-textMain transition hover:bg-[#2a2e35] disabled:cursor-not-allowed disabled:opacity-70"
           >
