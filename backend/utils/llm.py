@@ -11,6 +11,14 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DIFFICULTIES = {"beginner", "intermediate", "advanced"}
 
 
+def _truncate_sop_text(text: str) -> str:
+    max_chars = int(os.getenv("LLM_SOP_MAX_CHARS", "12000"))
+    cleaned = (text or "").strip()
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return cleaned[:max_chars]
+
+
 def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str:
     api_key = os.getenv("GROQ_API_KEY")
     model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -18,8 +26,9 @@ def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str
     if not api_key:
         raise RuntimeError("Missing GROQ_API_KEY in environment.")
 
-    max_retries = int(os.getenv("GROQ_MAX_RETRIES", "5"))
+    max_retries = int(os.getenv("GROQ_MAX_RETRIES", "2"))
     backoff_seconds = float(os.getenv("GROQ_BACKOFF_SECONDS", "1.5"))
+    request_timeout = int(os.getenv("GROQ_REQUEST_TIMEOUT_SECONDS", "45"))
 
     last_error = None
     for attempt in range(max_retries + 1):
@@ -35,7 +44,7 @@ def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str
                     "temperature": temperature,
                     "messages": messages,
                 },
-                timeout=90,
+                timeout=request_timeout,
             )
 
             # Retry on API throttling or temporary upstream failures.
@@ -171,10 +180,12 @@ def generate_output(text: str, difficulty: str = "intermediate") -> dict:
     if normalized_difficulty not in DIFFICULTIES:
         normalized_difficulty = "intermediate"
 
+    sop_text = _truncate_sop_text(text)
+
     content = _groq_chat_completion(
         messages=[
             {"role": "system", "content": "Return strict JSON only."},
-            {"role": "user", "content": _build_prompt(text, normalized_difficulty)},
+            {"role": "user", "content": _build_prompt(sop_text, normalized_difficulty)},
         ],
         temperature=0.2,
     )

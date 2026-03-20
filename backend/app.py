@@ -18,12 +18,16 @@ app = Flask(__name__)
 
 def _parse_allowed_origins() -> list[str]:
     raw = (os.getenv("ALLOWED_ORIGINS") or "").strip()
+    def normalize(origin: str) -> str:
+        return origin.strip().rstrip("/")
+
     if not raw:
         return [
             "http://localhost:3000",
-            "https://ai-training-system-dusky.vercel.app/",
+            "https://ai-training-system-dusky.vercel.app",
+            "https://ai-training-system.vercel.app",
         ]
-    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return [normalize(origin) for origin in raw.split(",") if normalize(origin)]
 
 
 ALLOWED_ORIGINS = _parse_allowed_origins()
