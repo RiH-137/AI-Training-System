@@ -24,6 +24,9 @@ def save_training_run(
     source_preview: str,
     source_content: str,
     result: dict,
+    difficulty: str = "intermediate",
+    recipient_email: str | None = None,
+    quiz_evaluation: dict | None = None,
 ) -> None:
     collection_data = _get_collection()
     if not collection_data:
@@ -37,6 +40,9 @@ def save_training_run(
             "source_preview": source_preview,
             "source_content": source_content,
             "result": result,
+            "difficulty": difficulty,
+            "recipient_email": recipient_email,
+            "quiz_evaluation": quiz_evaluation,
             "created_at": datetime.now(timezone.utc),
         }
     )

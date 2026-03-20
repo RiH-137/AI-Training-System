@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
@@ -23,16 +23,31 @@ function getSuggestedQuestions(count = 5) {
   return shuffled.slice(0, count)
 }
 
-export default function SopChat({ sessionId }) {
+export default function SopChat({
+  sessionId,
+  currentSessionId,
+  onSwitchToCurrentSession,
+  isLocked = false,
+  lockMessage = 'Chat is locked until SOP processing is completed.',
+}) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [suggestions] = useState(() => getSuggestedQuestions(5))
+  const [suggestions, setSuggestions] = useState(() => QUESTION_POOL.slice(0, 5))
+
+  useEffect(() => {
+    setSuggestions(getSuggestedQuestions(5))
+  }, [])
 
   const askQuestion = async (incomingQuestion) => {
     setError('')
     if (loading) {
+      return
+    }
+
+    if (isLocked) {
+      setError(lockMessage)
       return
     }
 
@@ -73,15 +88,55 @@ export default function SopChat({ sessionId }) {
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-line bg-panel p-6 shadow-panel">
+    <section className="rounded-2xl border border-line bg-panel p-6 shadow-panel">
       <h2 className="text-lg font-semibold tracking-wide">Ask Questions From SOP</h2>
       <p className="mt-1 text-sm text-textMuted">
         Ask multiple questions from your uploaded/pasted SOP content.
       </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="rounded-lg border border-line bg-panelSoft px-3 py-1.5 text-xs text-textMuted">
+          Using Session: <span className="font-semibold text-textMain">{sessionId || 'N/A'}</span>
+        </div>
+        {currentSessionId && currentSessionId !== sessionId ? (
+          <button
+            type="button"
+            onClick={onSwitchToCurrentSession}
+            className="rounded-lg border border-line bg-panelSoft px-3 py-1.5 text-xs text-textMuted transition hover:text-textMain"
+          >
+            Switch to Current Session
+          </button>
+        ) : null}
+      </div>
 
       <div className="mt-4 rounded-xl border border-line bg-panelSoft p-4">
+        {isLocked ? (
+          <div className="mb-4 rounded-lg border border-line bg-panel px-3 py-2 text-sm text-textMuted">
+            {lockMessage}
+          </div>
+        ) : null}
         <div className="mb-4">
-          <p className="text-xs uppercase tracking-[0.12em] text-textMuted">Suggested Questions</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs uppercase tracking-[0.12em] text-textMuted">Suggested Questions</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSuggestions(getSuggestedQuestions(5))}
+                className="rounded-lg border border-line bg-panel px-2.5 py-1 text-xs text-textMuted transition hover:text-textMain"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMessages([])
+                  setError('')
+                }}
+                className="rounded-lg border border-line bg-panel px-2.5 py-1 text-xs text-textMuted transition hover:text-textMain"
+              >
+                Clear Chat
+              </button>
+            </div>
+          </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {suggestions.map((item, index) => (
               <button
@@ -91,7 +146,7 @@ export default function SopChat({ sessionId }) {
                   setError('')
                   askQuestion(item)
                 }}
-                disabled={loading}
+                disabled={loading || isLocked}
                 className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-textMuted transition hover:bg-[#242a31] hover:text-textMain"
               >
                 {item}
@@ -128,17 +183,18 @@ export default function SopChat({ sessionId }) {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !loading) {
+              if (e.key === 'Enter' && !loading && !isLocked) {
                 askQuestion()
               }
             }}
             placeholder="Ask anything about the SOP..."
+            disabled={isLocked}
             className="w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-textMain outline-none transition focus:border-accent"
           />
           <button
             type="button"
             onClick={askQuestion}
-            disabled={loading}
+            disabled={loading || isLocked}
             className="w-fit rounded-lg border border-line bg-[#22252b] px-5 py-2 text-sm font-medium text-textMain transition hover:bg-[#2a2e35] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? 'Thinking...' : 'Ask'}

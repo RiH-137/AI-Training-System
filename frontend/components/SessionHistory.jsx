@@ -5,9 +5,11 @@ import axios from 'axios'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'
 
-export default function SessionHistory() {
+export default function SessionHistory({ activeChatSessionId, onSelectSessionForChat }) {
   const [lookupSessionId, setLookupSessionId] = useState('')
+  const [loadedSessionId, setLoadedSessionId] = useState('')
   const [history, setHistory] = useState([])
+  const [openId, setOpenId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -24,17 +26,21 @@ export default function SessionHistory() {
     try {
       setLoading(true)
       const res = await axios.get(`${API_BASE_URL}/history/${sessionId}`)
-      setHistory(Array.isArray(res.data?.history) ? res.data.history : [])
+      const nextHistory = Array.isArray(res.data?.history) ? res.data.history : []
+      setHistory(nextHistory)
+      setLoadedSessionId(sessionId)
+      setOpenId(nextHistory[0]?._id || null)
     } catch (err) {
       const message = err?.response?.data?.error || 'Failed to fetch session history.'
       setError(message)
+      setLoadedSessionId('')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-line bg-panel p-6 shadow-panel">
+    <section className="rounded-2xl border border-line bg-panel p-6 shadow-panel">
       <h2 className="text-lg font-semibold tracking-wide">Find Past Session History</h2>
       <p className="mt-1 text-sm text-textMuted">
         Enter an old Session ID to retrieve previous SOP runs.
@@ -57,7 +63,29 @@ export default function SessionHistory() {
         >
           {loading ? 'Loading...' : 'Get History'}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            const sessionId = lookupSessionId.trim()
+            const hasHistory = history.length > 0 && loadedSessionId === sessionId
+            if (/^[A-Za-z0-9]{8}$/.test(sessionId) && hasHistory) {
+              onSelectSessionForChat(sessionId, true)
+            }
+          }}
+          disabled={history.length === 0 || loadedSessionId !== lookupSessionId.trim()}
+          className="w-fit rounded-lg border border-line bg-panelSoft px-4 py-2 text-sm text-textMuted transition hover:text-textMain"
+        >
+          Ask From This Session
+        </button>
       </div>
+
+      <p className="mt-2 text-xs text-textMuted">
+        Chat unlock rule: session must have at least one processed SOP in history.
+      </p>
+
+      <p className="mt-2 text-xs text-textMuted">
+        Active Ask Session: {activeChatSessionId || 'N/A'}
+      </p>
 
       {error ? <p className="mt-3 text-sm text-[#d6a8a8]">{error}</p> : null}
 
@@ -69,7 +97,28 @@ export default function SessionHistory() {
                 <span>Source: {item.source_type?.toUpperCase() || 'N/A'}</span>
                 <span>{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
               </div>
-              <div className="mt-3 grid gap-3">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-textMuted">
+                <span>Difficulty: {(item.difficulty || 'intermediate').toUpperCase()}</span>
+                {item.recipient_email ? <span>Email: {item.recipient_email}</span> : null}
+                {item.quiz_evaluation ? (
+                  <span>
+                    Quiz Score: {item.quiz_evaluation.score}/{item.quiz_evaluation.total}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-2 text-sm text-textMain">
+                {(item.source_preview || item.source_content || 'No content available.').slice(0, 180)}
+                {((item.source_preview || item.source_content || '').length > 180) ? '...' : ''}
+              </p>
+              <button
+                type="button"
+                onClick={() => setOpenId(openId === item._id ? null : item._id)}
+                className="mt-3 rounded-lg border border-line bg-panel px-3 py-1.5 text-xs text-textMuted transition hover:text-textMain"
+              >
+                {openId === item._id ? 'Hide Details' : 'View Full Details'}
+              </button>
+
+              <div className={`${openId === item._id ? 'mt-3 grid gap-3' : 'hidden'}`}>
                 <div>
                   <p className="text-xs uppercase tracking-[0.12em] text-textMuted">SOP Content</p>
                   <div className="mt-1 max-h-60 overflow-y-auto rounded-md border border-line bg-panel p-3">
@@ -87,6 +136,17 @@ export default function SessionHistory() {
                     </pre>
                   </div>
                 </div>
+
+                {item.quiz_evaluation ? (
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.12em] text-textMuted">Quiz Evaluation</p>
+                    <div className="mt-1 max-h-72 overflow-y-auto rounded-md border border-line bg-panel p-3">
+                      <pre className="whitespace-pre-wrap text-sm text-textMain">
+                        {JSON.stringify(item.quiz_evaluation || {}, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </article>
           ))}

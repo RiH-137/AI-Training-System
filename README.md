@@ -1,107 +1,175 @@
-# Nutrabay-AI Automation Intern - Assessment
+# SOP AI Training System
 
-## Problem 4: SOP to AI Training System
-
-## Live Link
+## Live App
 https://ai-training-system-dusky.vercel.app/
 
-## Project Overview
-SOP to AI Training System converts SOP documents into training-ready outputs and supports follow-up Q and A on the same SOP context. It is built as a full-stack application with:
-- Frontend on Vercel (Next.js, JavaScript, Tailwind)
-- Backend on Render (Flask)
-- Optional MongoDB history storage
+## Overview
+SOP AI Training System turns SOP files into practical training outputs for employees.
 
-## Approach (Short Explanation)
-The system is designed as a practical full-stack flow that converts SOP content into training-ready outputs. The user can choose one of two input modes from the UI: upload a PDF or paste SOP text. This mode-based input approach avoids ambiguity and improves validation, because the backend receives only the intended source.
+Architecture:
+- Frontend: Next.js (Vercel)
+- Backend: Flask (Render)
+- Database: MongoDB
+- AI: Groq API
 
-On the server side, Flask handles request validation, text extraction for PDFs, and prompt orchestration for the LLM call. The prompt is structured to request strict JSON output with three sections: structured summary, step-by-step training guide, and quiz questions. This keeps parsing reliable and makes frontend rendering consistent.
+The app supports automated SOP processing, quiz generation and evaluation, SOP insights, session history, and SOP chat.
 
-The implementation focuses on stability and assignment quality. Secrets are managed using environment variables instead of hardcoded keys. Input checks and API error handling are included to gracefully handle invalid files, short text, or model response issues. A fallback response format is returned when model output cannot be parsed, so the application does not fail abruptly.
+## Updated Features
+- Auto SOP processing on upload or text paste pause (no manual process button)
+- Difficulty-based generation: Beginner, Intermediate, Advanced
+- AI output sections:
+- Structured summary
+- Step-by-step training
+- Quiz questions and expected answers
+- Smart insights (missing steps, improvement suggestions, safety/compliance notes)
+- Auto quiz evaluation with score and revision feedback
+- Text-to-speech for training steps
+- Real-time processing status indicators
+- Bulk SOP processing for multiple PDFs
+- Session-based persistent history in MongoDB
+- SOP chat with suggested prompts
+- Chat lock rule:
+- Ask Questions From SOP remains locked until SOP is successfully processed by AI for that session
+- Frontend (Vercel) email sending using Nodemailer via Next.js API route
 
-MongoDB persistence is implemented as optional history logging, which means the core experience works even when database settings are not configured. The UI follows a dark neutral palette (charcoal/slate/gray) to look clean, professional, and human-built. Final validation was done with backend syntax checks and frontend lint/build checks.
-
-## Features
-- Upload SOP as PDF
-- Paste SOP text directly
-- AI generated structured summary
-- AI generated step-by-step training guide
-- AI generated quiz questions and answers
-- Persistent 8 character alphanumeric session ID per visitor
-- Session-based storage in MongoDB
-- View past session history by session ID
-- Full SOP content and full generated output visible in history
-- Chat-style follow-up Q and A from uploaded SOP context
-- Suggested one-click questions in chat
-- Dark neutral UI suitable for assignment submission
-- Deployed architecture: Vercel frontend + Render backend
-
-## Tools Used
-- Next.js (JavaScript)
-- React
-- Tailwind CSS
-- Flask
-- Flask-CORS
-- Groq API
-- PyPDF2
-- requests (Python)
-- python-dotenv
-- MongoDB + PyMongo
-- ESLint
-- CoPilot (GPT-5.3-Codex)
-
-## How To Use (User Guide)
-1. Open the live app link.
-2. Note your Session ID shown at the top. Keep it safe to access history later.
+## User Guide
+1. Open the app.
+2. Copy your Session ID shown at top.
 3. Choose input mode:
-- Upload PDF: Select SOP PDF and click Process SOP.
-- Paste SOP: Paste SOP content and click Process SOP.
-4. Review generated sections:
-- Structured Summary
-- Step-by-Step Training
-- Quiz Questions
-5. Ask follow-up questions in Ask Questions From SOP section.
-- Type your question and click Ask.
-- Or click a suggested question for one-click ask.
-6. To check old work:
-- Go to Find Past Session History.
-- Enter a previous Session ID.
-- Click Get History to load complete records.
+- Upload PDF (single or bulk)
+- Paste SOP text
+4. Choose difficulty and optional employee email.
+5. SOP processes automatically.
+6. Review output tabs:
+- Summary
+- Training Steps
+- Quiz
+- Insights
+- Raw
+7. Optional quiz evaluation:
+- Answer quiz questions
+- Click Evaluate Quiz to get score and feedback
+8. Optional audio:
+- Open Training Steps tab
+- Click Listen Steps
+9. SOP chat usage:
+- Chat unlocks only after successful SOP processing for the active session
+- For past sessions, fetch history first and use Ask From This Session
+10. History:
+- Enter Session ID in Find Past Session History
+- Click Get History
 
-## How To Use (Developer Guide)
+## Developer Setup
 
-### 1) Clone and Install
-1. Clone repository.
-2. Setup backend dependencies.
-3. Setup frontend dependencies.
+### 1) Clone
+```bash
+git clone <your-repo-url>
+cd SOP-AI-Training-System
+```
 
-### 2) Backend Setup
-1. Go to backend folder.
-2. Create virtual environment and activate it.
-3. Install packages from requirements file.
-4. Create backend environment file with:
-- GROQ_API_KEY
-- GROQ_MODEL (optional)
-- MONGODB_URI (optional but required for history persistence)
-- MONGODB_DB
-- MONGODB_COLLECTION
-- ALLOWED_ORIGINS (comma-separated frontend origins)
-- PORT
-5. Run backend app.
+### 2) Backend (Render/Local)
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-### 3) Frontend Setup
-1. Go to frontend folder.
-2. Install npm packages.
-3. Create frontend environment file with:
-- NEXT_PUBLIC_API_BASE_URL (backend URL)
-4. Run frontend app.
+Create `backend/.env`:
+```env
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.1-8b-instant
+MONGODB_URI=your_mongodb_uri
+MONGODB_DB=sop_ai_training
+MONGODB_COLLECTION=training_runs
+ALLOWED_ORIGINS=http://localhost:3000,https://your-vercel-domain.vercel.app
+PORT=5000
+```
 
+Run backend:
+```bash
+python app.py
+```
 
-### 4) API Endpoints
-- GET /health : Health check
-- POST /process : Process SOP and save session run
-- GET /history/<session_id> : Fetch session history
-- POST /ask : Ask follow-up question using latest SOP in session
+### 3) Frontend (Vercel/Local)
+```bash
+cd ../frontend
+npm install
+```
 
-### 5) Validation Commands
-- Backend syntax check: python -m compileall .
-- Frontend lint: npm run lint
+Create `frontend/.env.local`:
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_sender_email@gmail.com
+SMTP_PASSWORD=your_app_password
+SMTP_FROM=your_sender_email@gmail.com
+```
+
+Run frontend:
+```bash
+npm run dev
+```
+
+## Deployment Documentation
+
+### Backend on Render
+Set environment variables in Render service:
+- `GROQ_API_KEY`
+- `GROQ_MODEL`
+- `MONGODB_URI` (if using history persistence)
+- `MONGODB_DB`
+- `MONGODB_COLLECTION`
+- `ALLOWED_ORIGINS` (include Vercel domain)
+- `PORT` (Render usually injects automatically)
+
+Start command:
+```bash
+gunicorn app:app
+```
+
+### Frontend on Vercel
+Set environment variables in Vercel project settings:
+- `NEXT_PUBLIC_API_BASE_URL` = your Render backend URL
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM`
+
+Important:
+- Email is sent from frontend server-side route: `frontend/app/api/send-training-email/route.js`
+- Do not expose SMTP credentials as `NEXT_PUBLIC_*`
+
+### Post-Deployment Checklist
+1. Open frontend URL.
+2. Upload one SOP PDF.
+3. Confirm output sections are generated.
+4. Confirm chat is initially locked and unlocks after successful processing.
+5. Ask SOP question and verify response.
+6. Submit quiz answers and verify score.
+7. If email is provided, confirm mail received.
+8. Fetch history by session ID and verify records.
+
+## API Endpoints (Backend)
+- `GET /health`
+- `POST /process`
+- `POST /process-bulk`
+- `GET /history/<session_id>`
+- `POST /ask`
+- `POST /evaluate-quiz`
+
+## Validation Commands
+Backend:
+```bash
+cd backend
+python -m compileall .
+```
+
+Frontend:
+```bash
+cd frontend
+npm run lint
+```
