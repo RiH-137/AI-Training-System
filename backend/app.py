@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from utils.llm import generate_output
+from utils.llm import answer_question_from_sop, generate_output
 from utils.parser import extract_text_from_pdf
-from utils.storage import get_training_history, save_training_run
+from utils.storage import get_latest_source_content, get_training_history, save_training_run
 
 load_dotenv()
 
@@ -107,6 +107,29 @@ def history_by_session(session_id: str):
     try:
         history = get_training_history(session_id=session_id)
         return jsonify({"ok": True, "session_id": session_id, "history": history})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@app.post("/ask")
+def ask_from_session():
+    payload = request.get_json(silent=True) or {}
+    session_id = (payload.get("session_id") or "").strip()
+    question = (payload.get("question") or "").strip()
+
+    if not SESSION_ID_REGEX.match(session_id):
+        return jsonify({"error": "Session ID must be 8 alphanumeric characters."}), 400
+
+    if len(question) < 3:
+        return jsonify({"error": "Question is too short."}), 400
+
+    try:
+        source_content = get_latest_source_content(session_id=session_id)
+        if not source_content:
+            return jsonify({"error": "No SOP found for this session ID."}), 404
+
+        answer = answer_question_from_sop(source_content, question)
+        return jsonify({"ok": True, "answer": answer})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

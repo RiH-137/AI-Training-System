@@ -67,3 +67,44 @@ def generate_output(text: str) -> dict:
             "quiz_questions": [],
             "raw_output": content,
         }
+
+
+def answer_question_from_sop(sop_text: str, question: str) -> str:
+    api_key = os.getenv("GROQ_API_KEY")
+    model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
+    if not api_key:
+        raise RuntimeError("Missing GROQ_API_KEY in environment.")
+
+    prompt = f"""
+You are an SOP assistant.
+Answer the user's question using only the SOP context below.
+If the answer is not present, clearly say it is not available in the SOP.
+
+SOP Context:
+{sop_text}
+
+Question:
+{question}
+""".strip()
+
+    response = requests.post(
+        GROQ_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "temperature": 0.2,
+            "messages": [
+                {"role": "system", "content": "Answer clearly and concisely in plain text."},
+                {"role": "user", "content": prompt},
+            ],
+        },
+        timeout=90,
+    )
+    response.raise_for_status()
+
+    payload = response.json()
+    return payload["choices"][0]["message"]["content"].strip()

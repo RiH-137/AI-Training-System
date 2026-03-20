@@ -61,3 +61,18 @@ def get_training_history(session_id: str, limit: int = 20) -> list[dict]:
 
     client.close()
     return records
+
+
+def get_latest_source_content(session_id: str) -> str | None:
+    collection_data = _get_collection()
+    if not collection_data:
+        return None
+
+    client, collection = collection_data
+    row = collection.find_one({"session_id": session_id}, sort=[("created_at", -1)])
+    client.close()
+
+    if not row:
+        return None
+
+    return row.get("source_content")

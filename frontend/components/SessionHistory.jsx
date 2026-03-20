@@ -69,7 +69,25 @@ export default function SessionHistory() {
                 <span>Source: {item.source_type?.toUpperCase() || 'N/A'}</span>
                 <span>{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
               </div>
-              <p className="mt-2 text-sm text-textMain">{item.source_preview || 'No preview available.'}</p>
+              <div className="mt-3 grid gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-textMuted">SOP Content</p>
+                  <div className="mt-1 max-h-60 overflow-y-auto rounded-md border border-line bg-panel p-3">
+                    <p className="whitespace-pre-wrap text-sm text-textMain">
+                      {item.source_content || item.source_preview || 'No content available.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-textMuted">Generated Output</p>
+                  <div className="mt-1 max-h-72 overflow-y-auto rounded-md border border-line bg-panel p-3">
+                    <pre className="whitespace-pre-wrap text-sm text-textMain">
+                      {JSON.stringify(item.result || {}, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
             </article>
           ))}
         </div>

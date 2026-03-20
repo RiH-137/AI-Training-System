@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import UploadForm from '../components/UploadForm'
 import OutputDisplay from '../components/OutputDisplay'
 import SessionHistory from '../components/SessionHistory'
+import SopChat from '../components/SopChat'
 
 function generateSessionId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -48,6 +49,7 @@ export default function HomePage() {
 
       <UploadForm setResult={setResult} sessionId={sessionId} />
       <OutputDisplay result={result} />
+      <SopChat sessionId={sessionId} />
       <SessionHistory />
     </main>
   )
