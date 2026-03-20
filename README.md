@@ -24,7 +24,7 @@ The app supports automated SOP processing, quiz generation and evaluation, SOP i
 ### Frontend
 - Next.js 14 (App Router)
 - React 18
-- JavaScript (no TypeScript)
+- JavaScript 
 - Tailwind CSS
 - Axios
 - Nodemailer (email sending through Next.js server route on Vercel)
