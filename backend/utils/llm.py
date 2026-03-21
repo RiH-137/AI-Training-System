@@ -61,13 +61,18 @@ def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str
     api_key = os.getenv("GROQ_API_KEY")
     base_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
     
-    # Use fallback models if rate-limited
+    if "prompt-guard" in base_model.lower():
+        base_model = "llama-3.1-8b-instant"
+    
     models_to_try = [
         base_model,
+        "llama-3.1-8b-instant",
         "llama3-8b-8192",
         "mixtral-8x7b-32768",
         "gemma2-9b-it"
     ]
+    # Remove duplicates but preserve order
+    models_to_try = list(dict.fromkeys(models_to_try))
 
     if not api_key:
         raise RuntimeError("Missing GROQ_API_KEY in environment.")
@@ -92,7 +97,6 @@ def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str
                 json={
                     "model": current_model,
                     "temperature": temperature,
-                    "max_tokens": 2048,
                     "messages": messages,
                 },
                 timeout=request_timeout,
