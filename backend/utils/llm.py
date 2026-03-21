@@ -11,6 +11,12 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DIFFICULTIES = {"beginner", "intermediate", "advanced"}
 
 
+class LLMTemporaryError(RuntimeError):
+    def __init__(self, message: str, status_code: int = 503):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 def _truncate_sop_text(text: str) -> str:
     max_chars = int(os.getenv("LLM_SOP_MAX_CHARS", "12000"))
     cleaned = (text or "").strip()
@@ -19,19 +25,63 @@ def _truncate_sop_text(text: str) -> str:
     return cleaned[:max_chars]
 
 
+def _extract_api_error_message(response: requests.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict):
+        error_payload = payload.get("error")
+        if isinstance(error_payload, dict):
+            message = str(error_payload.get("message") or "").strip()
+            if message:
+                return message
+        message = str(payload.get("message") or "").strip()
+        if message:
+            return message
+
+    return (response.text or "").strip()[:500]
+
+
+def _retry_delay_seconds(response: requests.Response | None, attempt: int, base_backoff: float) -> float:
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after:
+            try:
+                parsed = float(retry_after)
+                if parsed >= 0:
+                    return parsed
+            except ValueError:
+                pass
+    return base_backoff * (2**attempt)
+
+
 def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str:
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    base_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    
+    # Use fallback models if rate-limited
+    models_to_try = [
+        base_model,
+        "llama3-8b-8192",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
+    ]
 
     if not api_key:
         raise RuntimeError("Missing GROQ_API_KEY in environment.")
 
-    max_retries = int(os.getenv("GROQ_MAX_RETRIES", "2"))
+    max_retries = int(os.getenv("GROQ_MAX_RETRIES", "4"))
     backoff_seconds = float(os.getenv("GROQ_BACKOFF_SECONDS", "1.5"))
     request_timeout = int(os.getenv("GROQ_REQUEST_TIMEOUT_SECONDS", "45"))
 
     last_error = None
+    last_response = None
     for attempt in range(max_retries + 1):
+        # Rotate model to evade rate limits on specific models
+        current_model = models_to_try[attempt % len(models_to_try)]
+        
         try:
             response = requests.post(
                 GROQ_URL,
@@ -40,37 +90,63 @@ def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model,
+                    "model": current_model,
                     "temperature": temperature,
                     "messages": messages,
                 },
                 timeout=request_timeout,
             )
+            last_response = response
 
             # Retry on API throttling or temporary upstream failures.
             if response.status_code in (429, 500, 502, 503, 504):
                 if attempt < max_retries:
-                    retry_after = response.headers.get("Retry-After")
-                    if retry_after and retry_after.isdigit():
-                        wait_for = float(retry_after)
-                    else:
-                        wait_for = backoff_seconds * (2**attempt)
+                    wait_for = _retry_delay_seconds(response=response, attempt=attempt, base_backoff=backoff_seconds)
                     time.sleep(wait_for)
                     continue
 
             response.raise_for_status()
             payload = response.json()
-            return payload["choices"][0]["message"]["content"]
+            return str(payload["choices"][0]["message"]["content"])
         except requests.RequestException as exc:
             last_error = exc
             if attempt < max_retries:
-                time.sleep(backoff_seconds * (2**attempt))
+                wait_for = _retry_delay_seconds(response=last_response, attempt=attempt, base_backoff=backoff_seconds)
+                time.sleep(wait_for)
                 continue
             break
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            last_error = exc
+            break
+
+    if isinstance(last_response, requests.Response):
+        status_code = int(last_response.status_code)
+        api_message = _extract_api_error_message(last_response)
+
+        if status_code == 429:
+            raise LLMTemporaryError(
+                "Groq API is temporarily rate-limited. Please wait a few seconds and try again.",
+                status_code=429,
+            ) from last_error
+
+        if status_code in (500, 502, 503, 504):
+            raise LLMTemporaryError(
+                "Groq API is temporarily unavailable. Please retry in a few seconds.",
+                status_code=503,
+            ) from last_error
+
+        if status_code in (401, 403):
+            raise RuntimeError("Groq authentication failed. Check GROQ_API_KEY and model access.") from last_error
+
+        if api_message:
+            raise RuntimeError(f"Groq API request failed ({status_code}): {api_message}") from last_error
+
+        raise RuntimeError(f"Groq API request failed with status {status_code}.") from last_error
 
     if last_error:
-        raise RuntimeError(
-            "Groq API is temporarily rate-limited. Please wait a few seconds and try again."
+        raise LLMTemporaryError(
+            "Unable to reach Groq API right now. Please retry in a few seconds.",
+            status_code=503,
         ) from last_error
 
     raise RuntimeError("Unable to get response from Groq API.")
@@ -109,10 +185,16 @@ SOP:
 """.strip()
 
 
-def _fallback_output(raw_content: str, difficulty: str) -> dict:
+def _fallback_output(raw_content: str, difficulty: str, error_message: str | None = None) -> dict:
+    summary_message = "Model output could not be parsed as JSON."
+    step_message = "Try a shorter SOP and run again."
+    if error_message:
+        summary_message = f"Generation temporarily unavailable: {error_message}"
+        step_message = "Please retry in a few seconds."
+
     return {
-        "summary": ["Model output could not be parsed as JSON."],
-        "training_steps": ["Try a shorter SOP and run again."],
+        "summary": [summary_message],
+        "training_steps": [step_message],
         "quiz_questions": [],
         "insights": {
             "missing_steps": [],
@@ -182,13 +264,20 @@ def generate_output(text: str, difficulty: str = "intermediate") -> dict:
 
     sop_text = _truncate_sop_text(text)
 
-    content = _groq_chat_completion(
-        messages=[
-            {"role": "system", "content": "Return strict JSON only."},
-            {"role": "user", "content": _build_prompt(sop_text, normalized_difficulty)},
-        ],
-        temperature=0.2,
-    )
+    try:
+        content = _groq_chat_completion(
+            messages=[
+                {"role": "system", "content": "Return strict JSON only."},
+                {"role": "user", "content": _build_prompt(sop_text, normalized_difficulty)},
+            ],
+            temperature=0.2,
+        )
+    except Exception as exc:
+        return _fallback_output(
+            raw_content="",
+            difficulty=normalized_difficulty,
+            error_message=str(exc),
+        )
 
     try:
         parsed = json.loads(content)
@@ -246,13 +335,22 @@ Learner Answers:
 {json.dumps(user_answers, ensure_ascii=True)}
 """.strip()
 
-    content = _groq_chat_completion(
-        messages=[
-            {"role": "system", "content": "Return strict JSON only."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.1,
-    )
+    try:
+        content = _groq_chat_completion(
+            messages=[
+                {"role": "system", "content": "Return strict JSON only."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.1,
+        )
+    except (LLMTemporaryError, Exception) as exc:
+        return {
+            "score": 0,
+            "total": len(quiz_questions),
+            "feedback": f"Evaluation temporarily unavailable: {exc}",
+            "per_question_feedback": [],
+            "revision_focus": ["Retry evaluation in a few seconds."],
+        }
 
     try:
         parsed = json.loads(content)
@@ -311,10 +409,13 @@ Question:
 {question}
 """.strip()
 
-    return _groq_chat_completion(
-        messages=[
-            {"role": "system", "content": "Answer clearly and concisely in plain text."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.2,
-    ).strip()
+    try:
+        return _groq_chat_completion(
+            messages=[
+                {"role": "system", "content": "Answer clearly and concisely in plain text."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+        ).strip()
+    except (LLMTemporaryError, Exception) as exc:
+        return f"Unable to generate response right now: {exc}"

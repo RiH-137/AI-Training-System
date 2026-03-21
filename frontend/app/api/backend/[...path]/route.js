@@ -1,8 +1,22 @@
-function buildBackendUrl(pathSegments, searchParams) {
-  const baseUrl = String(process.env.BACKEND_API_BASE_URL || '').trim()
-  if (!baseUrl) {
-    throw new Error('Missing BACKEND_API_BASE_URL on frontend server environment.')
+function resolveBackendBaseUrl() {
+  const explicit = String(
+    process.env.BACKEND_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || ''
+  ).trim()
+  if (explicit) {
+    return explicit
   }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return 'http://localhost:5000'
+  }
+
+  throw new Error(
+    'Missing backend URL. Set BACKEND_API_BASE_URL (preferred) or NEXT_PUBLIC_API_BASE_URL in frontend environment.'
+  )
+}
+
+function buildBackendUrl(pathSegments, searchParams) {
+  const baseUrl = resolveBackendBaseUrl()
 
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
   const path = pathSegments.join('/')

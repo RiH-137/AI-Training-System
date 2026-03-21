@@ -140,7 +140,7 @@ npm install
 
 Create `frontend/.env.local`:
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+BACKEND_API_BASE_URL=http://localhost:5000
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -173,7 +173,8 @@ gunicorn app:app
 
 ### Frontend on Vercel
 Set environment variables in Vercel project settings:
-- `NEXT_PUBLIC_API_BASE_URL` = your Render backend URL
+- `BACKEND_API_BASE_URL` = your Render backend URL (recommended)
+- `NEXT_PUBLIC_API_BASE_URL` = optional compatibility fallback
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USER`

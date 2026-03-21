@@ -48,8 +48,8 @@ export async function POST(request) {
 
     if (!smtpHost || !smtpUser || !smtpPassword || !smtpFrom) {
       return Response.json(
-        { ok: false, error: 'SMTP environment variables are not configured on frontend.' },
-        { status: 500 }
+        { ok: false, error: 'SMTP environment variables are not configured on frontend. Skipping email.' },
+        { status: 200 }
       )
     }
 

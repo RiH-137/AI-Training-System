@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from utils.llm import answer_question_from_sop, evaluate_quiz_answers, generate_output
+from utils.llm import LLMTemporaryError, answer_question_from_sop, evaluate_quiz_answers, generate_output
 from utils.parser import extract_text_from_pdf
 from utils.storage import get_latest_source_content, get_training_history, save_training_run
 
-load_dotenv()
+ENV_PATH = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 
 app = Flask(__name__)
 
@@ -24,8 +26,7 @@ def _parse_allowed_origins() -> list[str]:
     if not raw:
         return [
             "http://localhost:3000",
-            "https://ai-training-system-dusky.vercel.app",
-            "https://ai-training-system.vercel.app",
+            "https://ai-training-system-dusky.vercel.app"
         ]
     return [normalize(origin) for origin in raw.split(",") if normalize(origin)]
 
@@ -68,6 +69,14 @@ def _extract_content_from_request_file(file, text: str) -> tuple[str, str]:
     if text:
         return text, "text"
     raise ValueError("Provide either a PDF file or SOP text.")
+
+
+def _error_payload_from_exception(exc: Exception):
+    if isinstance(exc, LLMTemporaryError):
+        return {"ok": False, "error": str(exc)}, exc.status_code
+    if isinstance(exc, ValueError):
+        return {"ok": False, "error": str(exc)}, 400
+    return {"ok": False, "error": str(exc)}, 500
 
 
 def _validate_difficulty(raw_difficulty: str | None) -> str:
@@ -121,7 +130,8 @@ def process_sop():
 
         return jsonify({"ok": True, "result": result})
     except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        payload, status = _error_payload_from_exception(exc)
+        return jsonify(payload), status
 
 
 @app.post("/process-bulk")
@@ -179,7 +189,8 @@ def process_sop_bulk():
                 }
             )
         except Exception as exc:
-            outputs.append({"filename": file.filename, "ok": False, "error": str(exc)})
+            payload, _ = _error_payload_from_exception(exc)
+            outputs.append({"filename": file.filename, "ok": False, "error": payload["error"]})
 
     return jsonify({"ok": True, "items": outputs})
 
@@ -193,7 +204,8 @@ def history_by_session(session_id: str):
         history = get_training_history(session_id=session_id)
         return jsonify({"ok": True, "session_id": session_id, "history": history})
     except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        payload, status = _error_payload_from_exception(exc)
+        return jsonify(payload), status
 
 
 @app.post("/ask")
@@ -216,7 +228,8 @@ def ask_from_session():
         answer = answer_question_from_sop(source_content, question)
         return jsonify({"ok": True, "answer": answer})
     except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        payload, status = _error_payload_from_exception(exc)
+        return jsonify(payload), status
 
 
 @app.post("/evaluate-quiz")
@@ -263,7 +276,8 @@ def evaluate_quiz():
 
         return jsonify({"ok": True, "evaluation": evaluation})
     except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 500
+        payload, status = _error_payload_from_exception(exc)
+        return jsonify(payload), status
 
 
 if __name__ == "__main__":
