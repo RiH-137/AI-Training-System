@@ -18,7 +18,7 @@ class LLMTemporaryError(RuntimeError):
 
 
 def _truncate_sop_text(text: str) -> str:
-    max_chars = int(os.getenv("LLM_SOP_MAX_CHARS", "12000"))
+    max_chars = int(os.getenv("LLM_SOP_MAX_CHARS", "8000"))
     cleaned = (text or "").strip()
     if len(cleaned) <= max_chars:
         return cleaned
@@ -92,6 +92,7 @@ def _groq_chat_completion(messages: list[dict], temperature: float = 0.2) -> str
                 json={
                     "model": current_model,
                     "temperature": temperature,
+                    "max_tokens": 2048,
                     "messages": messages,
                 },
                 timeout=request_timeout,
@@ -298,6 +299,8 @@ def evaluate_quiz_answers(
     if normalized_difficulty not in DIFFICULTIES:
         normalized_difficulty = "intermediate"
 
+    safe_sop_text = _truncate_sop_text(sop_text)
+
     prompt = f"""
 You are an evaluation assistant.
 Evaluate the learner answers against SOP context and expected quiz answers.
@@ -326,7 +329,7 @@ Rules:
 Difficulty: {normalized_difficulty}
 
 SOP Context:
-{sop_text}
+{safe_sop_text}
 
 Quiz Questions and Expected Answers:
 {json.dumps(quiz_questions, ensure_ascii=True)}
@@ -397,13 +400,15 @@ Learner Answers:
 
 
 def answer_question_from_sop(sop_text: str, question: str) -> str:
+    safe_sop_text = _truncate_sop_text(sop_text)
+    
     prompt = f"""
 You are an SOP assistant.
 Answer the user's question using only the SOP context below.
 If the answer is not present, clearly say it is not available in the SOP.
 
 SOP Context:
-{sop_text}
+{safe_sop_text}
 
 Question:
 {question}
