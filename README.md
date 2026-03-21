@@ -18,7 +18,7 @@ The app supports automated SOP processing, quiz generation and evaluation, SOP i
 
 ### AI tools and LLM
 - Groq API
-- Llama model via Groq (`llama-3.1-8b-instant`, configurable with `GROQ_MODEL`)
+- Llama model via Groq (`meta-llama/llama-prompt-guard-2-86m`, configurable with `GROQ_MODEL`)
 - Prompt-driven JSON generation for summary, training steps, quiz, and insights
 - Copilot
 - ChatGPT
