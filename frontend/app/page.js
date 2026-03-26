@@ -18,7 +18,7 @@ function generateSessionId() {
 export default function HomePage() {
   const [result, setResult] = useState(null)
   const [bulkResults, setBulkResults] = useState([])
-  const [resultMeta, setResultMeta] = useState({ difficulty: 'intermediate', emailSent: false })
+  const [resultMeta, setResultMeta] = useState({ difficulty: 'intermediate' })
   const [sessionId, setSessionId] = useState('')
   const [chatSessionId, setChatSessionId] = useState('')
   const [unlockedChatSessions, setUnlockedChatSessions] = useState({})

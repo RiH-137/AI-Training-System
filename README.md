@@ -141,12 +141,6 @@ npm install
 Create `frontend/.env.local`:
 ```env
 BACKEND_API_BASE_URL=http://localhost:5000
-
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_sender_email@gmail.com
-SMTP_PASSWORD=your_app_password
-SMTP_FROM=your_sender_email@gmail.com
 ```
 
 Run frontend:
@@ -175,15 +169,6 @@ gunicorn app:app
 Set environment variables in Vercel project settings:
 - `BACKEND_API_BASE_URL` = your Render backend URL (recommended)
 - `NEXT_PUBLIC_API_BASE_URL` = optional compatibility fallback
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_USER`
-- `SMTP_PASSWORD`
-- `SMTP_FROM`
-
-Important:
-- Email is sent from frontend server-side route: `frontend/app/api/send-training-email/route.js`
-- Do not expose SMTP credentials as `NEXT_PUBLIC_*`
 
 ### Post-Deployment Checklist
 1. Open frontend URL.
@@ -192,8 +177,7 @@ Important:
 4. Confirm chat is initially locked and unlocks after successful processing.
 5. Ask SOP question and verify response.
 6. Submit quiz answers and verify score.
-7. If email is provided, confirm mail received.
-8. Fetch history by session ID and verify records.
+7. Fetch history by session ID and verify records.
 
 ## API Endpoints (Backend)
 - `GET /health`
