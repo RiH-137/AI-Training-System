@@ -17,7 +17,6 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
   const [isBulk, setIsBulk] = useState(false)
   const [stage, setStage] = useState('Waiting for input...')
   const [error, setError] = useState('')
-  const [emailInfo, setEmailInfo] = useState('')
 
   const textDebounceRef = useRef(null)
   const stageIntervalRef = useRef(null)
@@ -51,28 +50,8 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
     }
   }, [])
 
-  const sendEmailFromFrontend = async ({ recipientEmail, result, sourceName }) => {
-    const email = (recipientEmail || '').trim()
-    if (!email) {
-      return false
-    }
-
-    try {
-      const res = await axios.post('/api/send-training-email', {
-        recipientEmail: email,
-        result,
-        difficulty,
-        sourceName,
-      })
-      return Boolean(res.data?.ok)
-    } catch {
-      return false
-    }
-  }
-
   const processSingle = async ({ nextFile, nextText }) => {
     setError('')
-    setEmailInfo('')
 
     if (!canUseSession) {
       setError('Session ID is initializing. Please try again in a moment.')
@@ -112,25 +91,9 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
         onUnlockChat(sessionId)
       }
 
-      let emailSent = false
-      if (employeeEmail.trim()) {
-        emailSent = await sendEmailFromFrontend({
-          recipientEmail: employeeEmail,
-          result: res.data.result,
-          sourceName: nextFile?.name || 'Pasted SOP',
-        })
-      }
-
       if (typeof onResultMeta === 'function') {
-        onResultMeta({ difficulty, emailSent })
+        onResultMeta({ difficulty })
       }
-      setEmailInfo(
-        employeeEmail.trim()
-          ? emailSent
-            ? 'Training output emailed to employee.'
-            : 'Email was not sent. Check frontend SMTP env on Vercel.'
-          : ''
-      )
       setStage('Completed.')
     } catch (err) {
       const message =
@@ -148,7 +111,6 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
 
   const processBulk = async (nextFiles) => {
     setError('')
-    setEmailInfo('')
 
     if (!canUseSession) {
       setError('Session ID is initializing. Please try again in a moment.')
@@ -179,31 +141,9 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
         onUnlockChat(sessionId)
       }
 
-      let emailSentCount = 0
-      if (employeeEmail.trim()) {
-        const emailTasks = items
-          .filter((item) => item.ok && item.result)
-          .map((item) =>
-            sendEmailFromFrontend({
-              recipientEmail: employeeEmail,
-              result: item.result,
-              sourceName: item.filename || 'SOP',
-            })
-          )
-        const settled = await Promise.all(emailTasks)
-        emailSentCount = settled.filter(Boolean).length
-      }
-
       if (typeof onResultMeta === 'function') {
-        onResultMeta({ difficulty, emailSent: emailSentCount > 0 })
+        onResultMeta({ difficulty })
       }
-      setEmailInfo(
-        employeeEmail.trim()
-          ? emailSentCount > 0
-            ? `${emailSentCount} bulk output email(s) sent.`
-            : 'Bulk outputs were generated, but emails were not sent.'
-          : ''
-      )
       setStage('Bulk completed.')
     } catch (err) {
       const message =
@@ -367,7 +307,6 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
         )}
 
         {error ? <p className="text-sm text-[#d6a8a8]">{error}</p> : null}
-        {emailInfo ? <p className="text-sm text-[#b2d0b2]">{emailInfo}</p> : null}
 
         <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-panelSoft px-3 py-2 text-xs text-textMuted">
           <span>Status:</span>
@@ -381,7 +320,6 @@ export default function UploadForm({ setResult, setBulkResults, sessionId, onRes
             setFiles([])
             setText('')
             setError('')
-            setEmailInfo('')
             setStage('Waiting for input...')
             setResult(null)
             setBulkResults([])
